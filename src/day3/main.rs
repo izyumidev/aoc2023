@@ -1,14 +1,9 @@
 use std::io::{self, Read};
 
-#[derive(Clone, Copy)]
-struct Point {
-    x: u32,
-    y: u32,
-}
-
+#[derive(Debug)]
 struct Number {
-    val: u32,
-    points: Vec<Point>,
+    val: usize,
+    points: Vec<(i32, i32)>,
 }
 
 fn main() {
@@ -16,47 +11,63 @@ fn main() {
     io::stdin().read_to_string(&mut buffer).unwrap();
     let mut sum = 0;
     let mut numbers: Vec<Number> = Vec::new();
+    let mut gears: Vec<(i32, i32)> = Vec::new();
     for (y, line) in buffer.lines().enumerate() {
-        let mut cur = 0;
-        let mut points = vec![];
+        let mut cur_val = 0;
+        let mut cur_points: Vec<(i32, i32)> = Vec::new();
         for (x, c) in line.chars().enumerate() {
             if c.is_numeric() {
-                cur = cur * 10 + c.to_digit(10).unwrap();
-                points.push(Point {
-                    x: x as u32,
-                    y: y as u32,
+                cur_val = cur_val * 10 + c.to_digit(10).unwrap() as usize;
+                cur_points.push((x as i32, y as i32));
+                continue;
+            }
+            if cur_val > 0 {
+                numbers.push(Number {
+                    val: cur_val,
+                    points: cur_points.clone(),
                 });
-            } else {
-                if cur != 0 {
-                    numbers.push(Number {
-                        val: cur,
-                        points: points.clone(),
-                    });
-                    cur = 0;
+                cur_val = 0;
+                cur_points = Vec::new();
+            }
+            if c.eq(&'*') {
+                gears.push((x as i32, y as i32));
+            }
+        }
+        if cur_val > 0 {
+            numbers.push(Number {
+                val: cur_val,
+                points: cur_points.clone(),
+            });
+        }
+    }
+    for gear in gears.iter() {
+        let mut count = 0;
+        let mut prod = 1;
+        for num in numbers.iter() {
+            let to_check = vec![
+                (gear.0 - 1, gear.1 - 1),
+                (gear.0 - 1, gear.1),
+                (gear.0 - 1, gear.1 + 1),
+                (gear.0, gear.1 - 1),
+                (gear.0, gear.1 + 1),
+                (gear.0 + 1, gear.1 - 1),
+                (gear.0 + 1, gear.1),
+                (gear.0 + 1, gear.1 + 1),
+            ];
+            'inner: for check in to_check.iter() {
+                if num.points.contains(check) {
+                    count += 1;
+                    prod *= num.val;
+                    println!("{:?} {:?} {:?} {}", gear, num, check, prod);
+                    break 'inner;
                 }
             }
         }
-    }
-    for (y, line) in buffer.lines().enumerate() {
-        for (x, c) in line.chars().enumerate() {
-            if c == '*' {
-                let mut adjacent_numbers: Vec<u32> = Vec::new();
-                for num in &numbers {
-                    for point in &num.points {
-                        if point.x.abs_diff(x as u32) <= 1 && point.y.abs_diff(y as u32) <= 1 {
-                            adjacent_numbers.push(num.val);
-                            break;
-                        }
-                    }
-                }
-                if adjacent_numbers.len() == 2 {
-                    println!("{:?}", adjacent_numbers);
-                    sum += adjacent_numbers[0] * adjacent_numbers[1];
-                }
-            }
+        if count == 2 {
+            sum += prod;
         }
     }
-    println!("{sum}")
+    println!("{}", sum);
 }
 
 #[allow(dead_code)]

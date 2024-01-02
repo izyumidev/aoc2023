@@ -3,51 +3,48 @@ use std::io::{self, Read};
 fn main() {
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer).unwrap();
-    let mut rows: Vec<u32> = vec![0; 30];
-    let mut cols: Vec<u32> = vec![0; 30];
-    let mut sum = 0;
-    let mut cur_starts_at = 0;
-    for (y, line) in buffer.lines().enumerate() {
+    let mut maps: Vec<Vec<Vec<bool>>> = Vec::new();
+    let mut cur_map: Vec<Vec<bool>> = Vec::new();
+    for line in buffer.lines() {
         if line.is_empty() {
-            rows = vec![0; 30];
-            cols = vec![0; 30];
-            cur_starts_at = y;
+            maps.push(cur_map.clone());
             continue;
         }
-        for (x, c) in line.chars().enumerate() {
+        let mut cur_row: Vec<bool> = Vec::new();
+        for c in line.chars() {
             match c {
-                '#' => {
-                    rows[y - cur_starts_at] |= 1 << x;
-                    cols[x] |= 1 << (y - cur_starts_at);
+                '#' => cur_row.push(true),
+                '.' => cur_row.push(false),
+                _ => unreachable!(),
+            }
+        }
+        cur_map.push(cur_row);
+    }
+    if !cur_map.is_empty() {
+        maps.push(cur_map);
+    }
+    let mut sum = 0;
+    'map_loop: for map in maps.iter() {
+        let mut prev_row = None;
+        for (y, row) in map.iter().enumerate() {
+            if prev_row.eq(&Some(row)) {
+                println!("{} {:?}", y, row);
+                sum += (y + 1) * 100;
+                continue 'map_loop;
+            }
+            prev_row = Some(row);
+        }
+        let col_num = map.iter().next().unwrap().len();
+        for x in 0..col_num {
+            let mut prev_col = None;
+            for y in 0..map.len() {
+                if prev_col.eq(&Some(map[y][x])) {
+                    sum += x + 1;
+                    continue 'map_loop;
                 }
-                '.' => (),
-                _ => panic!("Invalid character"),
+                prev_col = Some(map[y][x]);
             }
         }
     }
-    let mut prev_row = &0u32;
-    let mut reflects_vertically = false;
-    for (i, row) in rows.iter().enumerate() {
-        println!("{i} {:b} {:b}", prev_row, row);
-        if row & prev_row != *row {
-            prev_row = row;
-        } else {
-            println!("{i}");
-            sum += i;
-            reflects_vertically = true;
-            break;
-        }
-    }
-    if !reflects_vertically {
-        let mut prev_col = &0u32;
-        for (i, col) in cols.iter().enumerate() {
-            if col & prev_col != *col {
-                prev_col = col;
-            } else {
-                sum += 100 * i;
-                break;
-            }
-        }
-    }
-    println!("{sum}");
+    println!("{}", sum);
 }
